@@ -1,25 +1,58 @@
-{% extends "layout.html" %}
+{{ define "title" }}Shorten URLs, openly{{ end }}
 
-{% block content %}
-    <h1>Open-ly</h1>
-    <p>Simple, FOSS <span id="url">URL</span> shortener</p>
-    <p>Check out <a href="https://github.com/jere-mie/open-ly">the source code</a>!</p>
-    {% if current_user %}
-        <p>
-            <a role="button" href="/admin">Manage Links</a>
-            <a role="button" href="/new">New Link</a>
-            <a role="button" href="/logout">Logout</a>
+{{ define "content" }}
+<div class="landing">
+    <nav class="landing-nav">
+        <a href="/" class="logo">openly</a>
+        <div class="nav-links">
+            {{ if .Authenticated }}
+            <a href="/dashboard" class="nav-link">Dashboard</a>
+            {{ end }}
+        </div>
+    </nav>
+
+    <main class="hero">
+        <div class="hero-badge">open-source url shortener</div>
+        <h1 class="hero-title">
+            Shorten links.<br>
+            <span class="hero-accent">Share openly.</span>
+        </h1>
+        <p class="hero-subtitle">
+            A self-hosted link shortener you own completely.
+            No tracking by third parties. No vendor lock-in.
+            Just clean, fast redirects.
         </p>
-    {% endif %}
-    <script>
-        var count = 0;
-        var urlSpan = document.getElementById("url");
-        urlSpan.addEventListener("click", (e) => {
-            count++;
-            if(count >= 3){
-                document.location.href = "/loginadmin";
-            }
-        })
-    </script>
-    
-{% endblock %}
+        <div class="hero-cta">
+            {{ if .Authenticated }}
+            <a href="/dashboard" class="btn btn-primary">Go to Dashboard <span class="arrow">→</span></a>
+            {{ end }}
+        </div>
+    </main>
+
+    <section class="features-wrapper">
+        <div class="features">
+            <div class="feature anim-stagger" style="--i:0">
+                <div class="feature-icon">⚡</div>
+                <h3 class="feature-title">Lightning Fast</h3>
+                <p class="feature-desc">Single binary, sub-millisecond redirects. No bloated runtimes or external services.</p>
+            </div>
+            <div class="feature anim-stagger" style="--i:1">
+                <div class="feature-icon" id="lock-icon">🔒</div>
+                <h3 class="feature-title">Fully Private</h3>
+                <p class="feature-desc">Your data lives on your server. Analytics stay in your hands, never sold to advertisers.</p>
+            </div>
+            <div class="feature anim-stagger" style="--i:2">
+                <div class="feature-icon">✏️</div>
+                <h3 class="feature-title">Custom Links</h3>
+                <p class="feature-desc">Create branded short links with your own domain and custom endings. Make every URL memorable.</p>
+            </div>
+        </div>
+    </section>
+
+    <footer class="landing-footer">
+        <div class="footer-line"></div>
+        <p>openly · open-source · self-hosted</p>
+        <p class="footer-sub"><a href="https://github.com/jere-mie/openly" target="_blank" rel="noopener" class="footer-link">GitHub</a> · MIT Licensed</p>
+    </footer>
+</div>
+{{ end }}

@@ -1,20 +1,114 @@
-# open-ly
-Simple URL shortener like bitly
+# openly
 
-## Getting Set Up
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-- Ensure you have Go v1.23.4+ installed 
-- Install dependencies with the command `go mod tidy`
-- Copy the contents of `example.env` to the file `.env` and change the default values to whatever you desire
-- Run the application with `go run .`
-- Visit the app at [localhost:3000](http://localhost:3000) (or whatever port you specified in `.env`)
+A self-hosted, open-source URL shortener - a lightweight alternative to bit.ly. Single binary, no CGO, SQLite-backed, with built-in click analytics.
 
-### Air
+## Features
 
-You can use [Air](https://github.com/air-verse/air) for live reloading during development. Simply install Air with the following command:
+- **Single Binary** - templates, CSS, JS, and migrations are all embedded. One file to deploy.
+- **No CGO** - uses [ncruces/go-sqlite3](https://github.com/nicholasgasior/gopher-sqlite3) (WASM-based) so it cross-compiles cleanly.
+- **Click Analytics** - tracks clicks, referrers, user agents, and IP addresses.
+- **Custom Short Codes** - choose your own short code or let one be generated.
+- **Admin Dashboard** - password-protected dashboard to manage links and view stats.
+- **Responsive UI** - clean editorial design that works on desktop and mobile.
+
+## Getting Started
+
+### Prerequisites
+
+- Go 1.23.4+
+
+### Setup
+
+1. Clone the repository:
+   ```sh
+   git clone https://github.com/jere-mie/openly.git
+   cd openly
+   ```
+2. Install dependencies:
+   ```sh
+   go mod tidy
+   ```
+3. Create your config:
+   ```sh
+   cp example.env .env
+   ```
+   Edit `.env` to set your admin password, port, and other options.
+
+4. Run the application:
+   ```sh
+   go run .
+   ```
+5. Visit [http://localhost:8080](http://localhost:8080) (or whatever port you specified in `.env`).
+
+### CLI Commands
+
+```sh
+# Run database migrations manually (also runs automatically on startup)
+./openly migrate
+
+# Print the current version
+./openly version
+```
+
+### Building
+
+Build for your current platform:
+
+```sh
+go build -o bin/openly .
+```
+
+Cross-compile for all supported platforms:
+
+```powershell
+# PowerShell
+./scripts/build.ps1
+```
+
+```sh
+# Bash
+./scripts/build.sh
+```
+
+Binaries are output to the `bin/` directory.
+
+### Releasing
+
+The release scripts use the [GitHub CLI](https://cli.github.com/) to create a GitHub release from the version in `version.txt` and upload all binaries from `bin/`:
+
+```powershell
+# PowerShell
+./scripts/release.ps1
+```
+
+```sh
+# Bash
+./scripts/release.sh
+```
+
+### Development with Air
+
+You can use [Air](https://github.com/air-verse/air) for live reloading during development:
 
 ```sh
 go install github.com/air-verse/air@latest
+air
 ```
 
-and then you can type `air` in your terminal to run the application.
+## Configuration
+
+All configuration is done via environment variables (or a `.env` file):
+
+| Variable | Default | Description |
+|---|---|---|
+| `ADMIN_PASSWORD` | `admin` | Password for the admin dashboard |
+| `PORT` | `8080` | Server port |
+| `HOST` | `localhost` | Server bind address |
+| `DATABASE_PATH` | `openly.db` | Path to SQLite database file |
+| `BASE_URL` | `http://localhost:8080` | Public base URL for generated short links |
+
+## License
+
+MIT - see [LICENSE](LICENSE) for details.

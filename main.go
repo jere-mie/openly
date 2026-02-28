@@ -1,358 +1,102 @@
 package main
 
 import (
-	"database/sql"
 	"embed"
-	"errors"
 	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
-	"sync"
-	"time"
+	"strings"
 
-	"github.com/google/uuid"
-	_ "modernc.org/sqlite"
-
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/filesystem"
-	"github.com/gofiber/fiber/v2/middleware/logger"
-	"github.com/gofiber/template/django/v3"
-
-	"github.com/joho/godotenv"
+	"github.com/jere-mie/openly/internal/config"
+	"github.com/jere-mie/openly/internal/database"
+	"github.com/jere-mie/openly/internal/handlers"
+	"github.com/jere-mie/openly/internal/middleware"
 )
 
 //go:embed templates
-var TemplateAssets embed.FS
+var templateFS embed.FS
 
-//go:embed static/*
-var StaticAssets embed.FS
+//go:embed static
+var staticFS embed.FS
+
+//go:embed migrations
+var migrationFS embed.FS
 
 //go:embed version.txt
-var Version string
-
-// Global database mutex for synchronizing write operations
-var dbMutex sync.Mutex
-
-type Link struct {
-	ID        int
-	ShortID   string
-	LongURL   string
-	CreatedAt time.Time
-}
+var version string
 
 func main() {
-	log.Println("Starting the application...")
+	cfg := config.Load()
 
-	// Load .env file
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found, using default values")
+	// CLI commands
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "migrate":
+			db, err := database.Connect(cfg.DatabasePath)
+			if err != nil {
+				log.Fatalf("Failed to connect to database: %v", err)
+			}
+			defer db.Close()
+			if err := database.RunMigrations(db, migrationFS); err != nil {
+				log.Fatalf("Migration failed: %v", err)
+			}
+			log.Println("All migrations applied successfully.")
+			return
+		case "version":
+			fmt.Print(strings.TrimSpace(version))
+			return
+		default:
+			fmt.Fprintf(os.Stderr, "Unknown command: %s\n", os.Args[1])
+			fmt.Fprintln(os.Stderr, "Usage: openly [migrate|version]")
+			os.Exit(1)
+		}
 	}
 
-	// Connect to database "openly.db"
-	db, err := sql.Open("sqlite", "openly.db")
+	// Connect to database
+	db, err := database.Connect(cfg.DatabasePath)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer db.Close()
 
-	// Enable Write-Ahead Logging (WAL) mode for better concurrency
-	_, err = db.Exec("PRAGMA journal_mode=WAL;")
-	if err != nil {
+	// Auto-run pending migrations on startup
+	if err := database.RunMigrations(db, migrationFS); err != nil {
+		log.Fatalf("Auto-migration failed: %v", err)
+	}
+
+	// Initialize handlers
+	h := handlers.New(db, cfg, templateFS)
+
+	// Set up routes
+	mux := http.NewServeMux()
+
+	// Static files (embedded)
+	mux.Handle("GET /static/", http.FileServerFS(staticFS))
+
+	// Auth routes
+	mux.HandleFunc("GET /login", h.LoginPage)
+	mux.HandleFunc("POST /login", h.LoginSubmit)
+	mux.HandleFunc("POST /logout", h.Logout)
+
+	// Dashboard (protected)
+	mux.Handle("GET /dashboard", middleware.RequireAuth(cfg, http.HandlerFunc(h.Dashboard)))
+
+	// API routes (protected)
+	mux.Handle("POST /api/urls", middleware.RequireAuthAPI(cfg, http.HandlerFunc(h.CreateURL)))
+	mux.Handle("DELETE /api/urls/{id}", middleware.RequireAuthAPI(cfg, http.HandlerFunc(h.DeleteURL)))
+	mux.Handle("PATCH /api/urls/{id}", middleware.RequireAuthAPI(cfg, http.HandlerFunc(h.UpdateURL)))
+	mux.Handle("GET /api/urls/{id}/stats", middleware.RequireAuthAPI(cfg, http.HandlerFunc(h.GetURLStats)))
+
+	// Public landing page (exact root match)
+	mux.HandleFunc("GET /{$}", h.Index)
+
+	// Short URL redirect (single path segment catch-all)
+	mux.HandleFunc("GET /{shortCode}", h.Redirect)
+
+	addr := fmt.Sprintf("%s:%s", cfg.Host, cfg.Port)
+	log.Printf("openly %s listening on http://%s", strings.TrimSpace(version), addr)
+	if err := http.ListenAndServe(addr, mux); err != nil {
 		log.Fatal(err)
 	}
-
-	// Create tables if they don't exist
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS links (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		short_id TEXT NOT NULL UNIQUE,
-		long_url TEXT NOT NULL,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-	);`)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS sessions (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		session_id TEXT NOT NULL UNIQUE,
-		expiry_time DATETIME NOT NULL,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-	);`)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Embed /templates directory into binary
-	engine := django.NewPathForwardingFileSystem(http.FS(TemplateAssets), "/templates", ".html")
-	app := fiber.New(fiber.Config{
-		Views:             engine,
-		PassLocalsToViews: true,
-		ErrorHandler: func(ctx *fiber.Ctx, err error) error {
-			code := fiber.StatusInternalServerError
-			var e *fiber.Error
-			if errors.As(err, &e) {
-				code = e.Code
-			}
-
-			if code == 404 || code == 500 {
-				err = ctx.Render(fmt.Sprintf("%d", code), fiber.Map{})
-			}
-
-			if err != nil {
-				return ctx.Status(fiber.StatusInternalServerError).SendString("Internal Server Error")
-			}
-			return nil
-		},
-	})
-
-	app.Use(logger.New())
-	app.Use(currentUserMiddleware(db))
-
-	// Embed /static assets into binary
-	app.Use("/static", filesystem.New(filesystem.Config{
-		Root:       http.FS(StaticAssets),
-		PathPrefix: "static",
-		Browse:     false,
-	}))
-
-	PORT := GetEnv("PORT", "3000")
-
-	app.Get("/", func(c *fiber.Ctx) error {
-		return c.Render("index", fiber.Map{})
-	})
-
-	app.Get("/loginadmin", func(c *fiber.Ctx) error {
-		return c.Render("login", fiber.Map{})
-	})
-
-	app.Get("/admin", func(c *fiber.Ctx) error {
-		var currentUser = c.Locals("current_user")
-		if currentUser == nil {
-			log.Println("Admin login required")
-			return c.Render("404", fiber.Map{})
-		}
-
-		rows, err := db.Query("SELECT id, short_id, long_url, created_at FROM links")
-		if err != nil {
-			log.Println(err)
-			return c.Render("500", fiber.Map{})
-		}
-		defer rows.Close()
-
-		var links []Link
-		for rows.Next() {
-			var link Link
-			err := rows.Scan(&link.ID, &link.ShortID, &link.LongURL, &link.CreatedAt)
-			if err != nil {
-				log.Println(err)
-				return c.Render("500", fiber.Map{})
-			}
-			links = append(links, link)
-		}
-
-		return c.Render("admin", fiber.Map{
-			"links": links,
-		})
-	})
-
-	app.Get("/new", func(c *fiber.Ctx) error {
-		var currentUser = c.Locals("current_user")
-		if currentUser == nil {
-			return c.Render("404", fiber.Map{})
-		}
-		return c.Render("new", fiber.Map{})
-	})
-
-	app.Get("/logout", func(c *fiber.Ctx) error {
-		sessionID := c.Cookies("session_id")
-		if sessionID != "" {
-			dbMutex.Lock()
-			defer dbMutex.Unlock()
-
-			stmt, err := db.Prepare("DELETE FROM sessions WHERE session_id = ?")
-			if err != nil {
-				log.Println(err)
-				return c.Redirect("/")
-			}
-			defer stmt.Close()
-
-			_, err = stmt.Exec(sessionID)
-			if err != nil {
-				log.Println(err)
-			}
-		}
-
-		c.ClearCookie("session_id")
-		return c.Redirect("/")
-	})
-
-	app.Post("/loginadmin", func(c *fiber.Ctx) error {
-		password := GetPassword()
-
-		if c.FormValue("password") == password {
-			log.Println("Admin login successful")
-			sessionID := uuid.New().String()
-			expiryTime := time.Now().Add(24 * time.Hour)
-
-			dbMutex.Lock()
-			defer dbMutex.Unlock()
-
-			stmt, err := db.Prepare("INSERT INTO sessions (session_id, expiry_time) VALUES (?, ?)")
-			if err != nil {
-				log.Println(err)
-				return c.Redirect("/loginadmin")
-			}
-			defer stmt.Close()
-
-			_, err = stmt.Exec(sessionID, expiryTime)
-			if err != nil {
-				log.Println(err)
-				return c.Redirect("/loginadmin")
-			}
-
-			c.Cookie(&fiber.Cookie{
-				Name:     "session_id",
-				Value:    sessionID,
-				Expires:  expiryTime,
-				HTTPOnly: true,
-			})
-
-			return c.Redirect("/admin")
-		} else {
-			log.Println("Admin login failed")
-			return c.Redirect("/loginadmin")
-		}
-	})
-
-	app.Post("/shorten", func(c *fiber.Ctx) error {
-		current_user := c.Locals("current_user")
-
-		if current_user == nil {
-			log.Println("Admin login required")
-			return c.JSON(fiber.Map{"error": "Admin login required"})
-		}
-		dbMutex.Lock()
-		defer dbMutex.Unlock()
-
-		stmt, err := db.Prepare("INSERT INTO links (short_id, long_url) VALUES (?, ?)")
-		if err != nil {
-			log.Println(err)
-			return c.JSON(fiber.Map{"error": "Internal Server Error"})
-		}
-		defer stmt.Close()
-
-		longURL := c.FormValue("long_url")
-		shortID := c.FormValue("short_id")
-		if shortID == "" {
-			shortID = GenerateShortID()
-		}
-
-		// disallow short_id that matches existing routes or common phrases
-		routes := []string{"home", "new", "shorten", "loginadmin", "logout", "delete", "admin", "login", "register"}
-		for _, route := range routes {
-			if shortID == route {
-				return c.JSON(fiber.Map{"error": "Custom URL ending is reserved"})
-			}
-		}
-
-		// check if short_id already exists
-		var count int
-		err = db.QueryRow("SELECT COUNT(*) FROM links WHERE short_id = ?", shortID).Scan(&count)
-		if err != nil {
-			log.Println(err)
-			return c.JSON(fiber.Map{"error": "Internal Server Error"})
-		}
-		if count > 0 {
-			return c.JSON(fiber.Map{"error": "Custom URL ending already exists"})
-		}
-
-		_, err = stmt.Exec(shortID, longURL)
-		if err != nil {
-			log.Println(err)
-			return c.JSON(fiber.Map{"error": "Internal Server Error"})
-		}
-
-		return c.JSON(fiber.Map{"status": "success"})
-	})
-
-	app.Get("/delete/:id", func(c *fiber.Ctx) error {
-		id := c.Params("id")
-		dbMutex.Lock()
-		defer dbMutex.Unlock()
-
-		stmt, err := db.Prepare("DELETE FROM links WHERE id = ?")
-		if err != nil {
-			log.Println(err)
-			return c.Redirect("/admin")
-		}
-		defer stmt.Close()
-
-		_, err = stmt.Exec(id)
-		if err != nil {
-			log.Println(err)
-			return c.Redirect("/admin")
-		}
-
-		return c.Redirect("/admin")
-	})
-
-	app.Get("/:short_id", func(c *fiber.Ctx) error {
-		shortID := c.Params("short_id")
-		var link Link
-		err := db.QueryRow("SELECT id, short_id, long_url, created_at FROM links WHERE short_id = ?", shortID).Scan(&link.ID, &link.ShortID, &link.LongURL, &link.CreatedAt)
-		if err != nil {
-			log.Println(err)
-			return c.Render("404", fiber.Map{})
-		}
-		return c.Redirect(link.LongURL)
-	})
-
-	log.Printf("Listening on port %s", PORT)
-	log.Fatal(app.Listen(fmt.Sprintf("127.0.0.1:%s", PORT)))
-}
-
-// Helper function to get environment variables with a fallback value
-func GetEnv(key, fallback string) string {
-	value, exists := os.LookupEnv(key)
-	if !exists {
-		return fallback
-	}
-	return value
-}
-
-// Generate a random base32 string of length 6 for creating "short links"
-func GenerateShortID() string {
-	charset := "abcdefghijklmnopqrstuvwxyz0123456789"
-	length := 6
-	randomString := make([]byte, length)
-	for i := range randomString {
-		randomString[i] = charset[rand.Intn(len(charset))]
-	}
-	return string(randomString)
-}
-
-func currentUserMiddleware(db *sql.DB) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		sessionID := c.Cookies("session_id")
-		if sessionID == "" {
-			c.Locals("current_user", nil)
-			return c.Next()
-		}
-
-		var exists int
-		err := db.QueryRow("SELECT COUNT(*) FROM sessions WHERE session_id = ? AND expiry_time > ?", sessionID, time.Now()).Scan(&exists)
-		if err != nil || exists == 0 {
-			c.Locals("current_user", nil)
-			return c.Next()
-		}
-
-		c.Locals("current_user", 1)
-		return c.Next()
-	}
-}
-
-func GetPassword() string {
-	return GetEnv("ADMIN_PASSWORD", "admin")
 }

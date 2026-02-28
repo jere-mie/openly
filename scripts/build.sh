@@ -30,7 +30,7 @@ for OS in "${PLATFORMS[@]}"; do
         echo "Building for $OS/$ARCH..."
         
         # Set environment variables and build
-        env GOOS=$OS GOARCH=$ARCH go build -o "$OUTPUT_DIR/$OUTPUT_NAME" .
+        CGO_ENABLED=0 GOOS=$OS GOARCH=$ARCH go build -o "$OUTPUT_DIR/$OUTPUT_NAME" .
         
         if [ $? -ne 0 ]; then
             echo "Failed to build for $OS/$ARCH"

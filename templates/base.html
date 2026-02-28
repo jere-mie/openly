@@ -1,0 +1,56 @@
+{{ define "base" }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ template "title" . }} - openly</title>
+    <meta name="description" content="A self-hosted, open-source URL shortener. Shorten links, track clicks, and own your data.">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{{ template "title" . }} - openly">
+    <meta property="og:description" content="A self-hosted, open-source URL shortener. Shorten links, track clicks, and own your data.">
+    <meta property="og:site_name" content="openly">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="{{ template "title" . }} - openly">
+    <meta name="twitter:description" content="A self-hosted, open-source URL shortener. Shorten links, track clicks, and own your data.">
+
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔗</text></svg>">
+</head>
+<body>
+    <div class="grain-overlay" aria-hidden="true"></div>
+    {{ template "content" . }}
+    <!-- Confirm Dialog -->
+    <div id="confirm-overlay" class="modal-overlay hidden" aria-hidden="true">
+        <div class="modal-dialog">
+            <h3 class="modal-title" id="confirm-title">Are you sure?</h3>
+            <p class="modal-desc" id="confirm-desc"></p>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" id="confirm-cancel">Cancel</button>
+                <button class="btn btn-danger" id="confirm-ok">Delete</button>
+            </div>
+        </div>
+    </div>
+    <!-- Edit Dialog -->
+    <div id="edit-overlay" class="modal-overlay hidden" aria-hidden="true">
+        <div class="modal-dialog">
+            <h3 class="modal-title">Edit Short Code</h3>
+            <div class="form-group" style="margin-top:1rem;">
+                <label for="edit-code-input">Short Code</label>
+                <input type="text" id="edit-code-input" autocomplete="off">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" id="edit-cancel">Cancel</button>
+                <button class="btn btn-primary" id="edit-save">Save</button>
+            </div>
+        </div>
+    </div>
+    <div id="toast-container"></div>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
+{{ end }}

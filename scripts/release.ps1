@@ -16,7 +16,7 @@ $releaseName = "Release $tag"
 
 Write-Host "Creating GitHub release for tag: $tag"
 
-# Get all files in the 'bin' directory (recursively if needed)
+# Get all files in the 'bin' directory
 $files = Get-ChildItem -Path "bin" -File
 
 # Ensure that we have at least one file
@@ -25,8 +25,11 @@ if ($files.Count -eq 0) {
     exit 1
 }
 
+# Build file path list for gh
+$filePaths = @($files | ForEach-Object { $_.FullName })
+
 # Create the release with the files
-$releaseResult = gh release create "$tag" $files.FullName --title "$releaseName" --notes "Automated release for $tag"
+gh release create "$tag" @filePaths --title "$releaseName" --notes "Automated release for $tag"
 
 if ($?) {
     Write-Host "GitHub release created successfully."

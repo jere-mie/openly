@@ -1,15 +1,33 @@
-{% extends "layout.html" %}
-{% block content %}
-<div style="display: flex; justify-content: center;">
-    <form method="post">
-        <h2>Login to Manage Short Links</h2>
-        <fieldset>
-            <label>
-                Access Key
-                <input type="password" name="password" />
-            </label>
-        </fieldset>
-        <input type="submit" value="Login" />
-    </form>
+{{ define "title" }}Login{{ end }}
+
+{{ define "content" }}
+<div class="login-page">
+    <div class="login-container anim-fade-up">
+        <a href="/" class="logo login-logo">openly</a>
+        <p class="login-subtitle">Enter your admin password to continue.</p>
+
+        {{ if .Error }}
+        <div class="alert alert-error">{{ .Error }}</div>
+        {{ end }}
+
+        <form action="/login" method="POST" class="login-form">
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    placeholder="••••••••"
+                    required
+                    autofocus
+                >
+            </div>
+            <button type="submit" class="btn btn-primary btn-full">
+                Sign In <span class="arrow">→</span>
+            </button>
+        </form>
+
+        <a href="/" class="login-back">← Back to home</a>
+    </div>
 </div>
-{% endblock %}
+{{ end }}

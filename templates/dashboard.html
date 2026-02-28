@@ -1,0 +1,120 @@
+{{ define "title" }}Dashboard{{ end }}
+
+{{ define "content" }}
+<div class="dashboard">
+    <nav class="dash-nav">
+        <a href="/" class="logo">openly</a>
+        <div class="nav-right">
+            <span class="nav-badge">Admin</span>
+            <form action="/logout" method="POST" class="logout-form">
+                <button type="submit" class="btn btn-ghost">Logout</button>
+            </form>
+        </div>
+    </nav>
+
+    <main class="dash-main">
+        <!-- Stats Row -->
+        <section class="stats-row">
+            <div class="stat-card anim-stagger" style="--i:0">
+                <span class="stat-number" data-count="{{ .TotalURLs }}">{{ .TotalURLs }}</span>
+                <span class="stat-label">Links</span>
+            </div>
+            <div class="stat-card anim-stagger" style="--i:1">
+                <span class="stat-number" data-count="{{ .TotalClicks }}">{{ formatNumber .TotalClicks }}</span>
+                <span class="stat-label">Total Clicks</span>
+            </div>
+        </section>
+
+        <!-- Create URL -->
+        <section class="create-section anim-fade-up">
+            <h2 class="section-title">Shorten a Link</h2>
+            <form id="create-url-form" class="create-form">
+                <div class="create-form-row">
+                    <div class="input-group input-group-grow">
+                        <label for="url-input" class="sr-only">URL to shorten</label>
+                        <input
+                            type="text"
+                            id="url-input"
+                            name="url"
+                            placeholder="Paste your long URL here…"
+                            required
+                            autocomplete="off"
+                        >
+                    </div>
+                    <div class="input-group">
+                        <label for="custom-code" class="sr-only">Custom short code</label>
+                        <input
+                            type="text"
+                            id="custom-code"
+                            name="custom_code"
+                            placeholder="Custom code (optional)"
+                            autocomplete="off"
+                        >
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="create-btn">
+                        <span class="btn-text">Shorten</span>
+                        <span class="btn-loading hidden">
+                            <span class="spinner"></span>
+                        </span>
+                    </button>
+                </div>
+            </form>
+            <div id="create-result" class="create-result hidden">
+                <span class="result-label">Your short link:</span>
+                <a id="result-url" href="#" target="_blank" class="result-link"></a>
+                <button class="btn btn-small btn-copy" id="result-copy">Copy</button>
+            </div>
+        </section>
+
+        <!-- URLs List -->
+        <section class="urls-section">
+            <div class="urls-header">
+                <h2 class="section-title">Your Links</h2>
+                {{ if .URLs }}
+                <div class="search-box">
+                    <input type="text" id="search-urls" placeholder="Search links…" autocomplete="off">
+                </div>
+                {{ end }}
+            </div>
+
+            {{ if .URLs }}
+            <div class="urls-list" id="urls-list">
+                {{ range .URLs }}
+                <div class="url-card anim-stagger" data-id="{{ .ID }}" data-short-code="{{ .ShortCode }}" data-searchable="{{ .ShortCode }} {{ .OriginalURL }}">
+                    <div class="url-card-main">
+                        <div class="url-info">
+                            <div class="url-short-row">
+                                <a href="{{ $.BaseURL }}/{{ .ShortCode }}" target="_blank" rel="noopener" class="url-short">/{{ .ShortCode }}</a>
+                            </div>
+                            <div class="url-original" title="{{ .OriginalURL }}">{{ truncate .OriginalURL 80 }}</div>
+                        </div>
+                        <div class="url-meta">
+                            <span class="url-clicks">
+                                <span class="clicks-count">{{ .Clicks }}</span> clicks
+                            </span>
+                            <span class="url-date">{{ formatDate .CreatedAt }}</span>
+                        </div>
+                        <div class="url-actions">
+                            <button class="btn btn-small btn-copy" data-url="{{ $.BaseURL }}/{{ .ShortCode }}" title="Copy short URL">Copy</button>
+                            <button class="btn btn-small btn-outline btn-edit" data-id="{{ .ID }}" data-code="{{ .ShortCode }}" title="Edit short code">Edit</button>
+                            <button class="btn btn-small btn-outline btn-stats" data-id="{{ .ID }}" title="View click statistics">Stats</button>
+                            <button class="btn btn-small btn-danger btn-delete" data-id="{{ .ID }}" title="Delete this link">Delete</button>
+                        </div>
+                    </div>
+                    <div class="url-stats-panel hidden" id="stats-{{ .ID }}">
+                        <div class="stats-loading">Loading analytics…</div>
+                    </div>
+                </div>
+                {{ end }}
+            </div>
+            {{ else }}
+            <div class="empty-state anim-fade-up">
+                <div class="empty-icon">🔗</div>
+                <h3>No links yet</h3>
+                <p>Create your first shortened link above to get started.</p>
+            </div>
+            {{ end }}
+        </section>
+    </main>
+</div>
+{{ end }}

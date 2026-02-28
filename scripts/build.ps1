@@ -30,6 +30,7 @@ ForEach ($OS in $Platforms) {
         Write-Host "Building for $OS/$ARCH..."
         
         # Set environment variables and build
+        $env:CGO_ENABLED = "0"
         $env:GOOS = $OS
         $env:GOARCH = $ARCH
         go build -o "$OutputDir/$OutputName" .
@@ -41,5 +42,10 @@ ForEach ($OS in $Platforms) {
         }
     }
 }
+
+# Reset environment variables
+Remove-Item Env:GOOS -ErrorAction SilentlyContinue
+Remove-Item Env:GOARCH -ErrorAction SilentlyContinue
+Remove-Item Env:CGO_ENABLED -ErrorAction SilentlyContinue
 
 Write-Host "All builds completed."
