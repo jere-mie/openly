@@ -112,3 +112,55 @@ All configuration is done via environment variables (or a `.env` file):
 ## License
 
 MIT - see [LICENSE](LICENSE) for details.
+
+## Download a Release Binary
+
+You can download a prebuilt binary directly from GitHub Releases without cloning the repo.
+
+### Linux (amd64)
+
+```sh
+curl -Lo openly https://github.com/jere-mie/openly/releases/latest/download/openly_linux_amd64
+chmod +x openly
+```
+
+### Linux (arm64)
+
+```sh
+curl -Lo openly https://github.com/jere-mie/openly/releases/latest/download/openly_linux_arm64
+chmod +x openly
+```
+
+### macOS (Apple Silicon)
+
+```sh
+curl -Lo openly https://github.com/jere-mie/openly/releases/latest/download/openly_darwin_arm64
+chmod +x openly
+```
+
+### macOS (Intel)
+
+```sh
+curl -Lo openly https://github.com/jere-mie/openly/releases/latest/download/openly_darwin_amd64
+chmod +x openly
+```
+
+### Windows (PowerShell)
+
+```powershell
+Invoke-WebRequest -Uri "https://github.com/jere-mie/openly/releases/latest/download/openly_windows_amd64.exe" -OutFile "openly.exe"
+```
+
+### Available Binaries
+
+| Platform | Architecture | Filename |
+|---|---|---|
+| Linux | amd64 | `openly_linux_amd64` |
+| Linux | 386 | `openly_linux_386` |
+| Linux | arm64 | `openly_linux_arm64` |
+| Linux | arm | `openly_linux_arm` |
+| macOS | amd64 | `openly_darwin_amd64` |
+| macOS | arm64 | `openly_darwin_arm64` |
+| Windows | amd64 | `openly_windows_amd64.exe` |
+| Windows | 386 | `openly_windows_386.exe` |
+| Windows | arm64 | `openly_windows_arm64.exe` |
