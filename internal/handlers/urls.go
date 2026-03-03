@@ -73,7 +73,6 @@ func (h *Handler) CreateURL(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"id":           id,
 		"short_code":   shortCode,
-		"short_url":    h.cfg.BaseURL + "/" + shortCode,
 		"original_url": originalURL,
 	})
 }
@@ -148,7 +147,6 @@ func (h *Handler) UpdateURL(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"status":     "updated",
 		"short_code": newCode,
-		"short_url":  h.cfg.BaseURL + "/" + newCode,
 	})
 }
 

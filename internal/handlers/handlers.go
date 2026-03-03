@@ -90,6 +90,5 @@ func (h *Handler) render(w http.ResponseWriter, name string, data map[string]int
 func (h *Handler) commonData(r *http.Request) map[string]interface{} {
 	return map[string]interface{}{
 		"Authenticated": middleware.IsAuthenticated(r, h.cfg),
-		"BaseURL":       h.cfg.BaseURL,
 	}
 }

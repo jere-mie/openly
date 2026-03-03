@@ -84,7 +84,7 @@
                     <div class="url-card-main">
                         <div class="url-info">
                             <div class="url-short-row">
-                                <a href="{{ $.BaseURL }}/{{ .ShortCode }}" target="_blank" rel="noopener" class="url-short">/{{ .ShortCode }}</a>
+                                <a href="/{{ .ShortCode }}" target="_blank" rel="noopener" class="url-short">/{{ .ShortCode }}</a>
                             </div>
                             <div class="url-original" title="{{ .OriginalURL }}">{{ truncate .OriginalURL 80 }}</div>
                         </div>
@@ -95,7 +95,7 @@
                             <span class="url-date">{{ formatDate .CreatedAt }}</span>
                         </div>
                         <div class="url-actions">
-                            <button class="btn btn-small btn-copy" data-url="{{ $.BaseURL }}/{{ .ShortCode }}" title="Copy short URL">Copy</button>
+                            <button class="btn btn-small btn-copy" data-short-code="{{ .ShortCode }}" title="Copy short URL">Copy</button>
                             <button class="btn btn-small btn-outline btn-edit" data-id="{{ .ID }}" data-code="{{ .ShortCode }}" title="Edit short code">Edit</button>
                             <button class="btn btn-small btn-outline btn-stats" data-id="{{ .ID }}" title="View click statistics">Stats</button>
                             <button class="btn btn-small btn-danger btn-delete" data-id="{{ .ID }}" title="Delete this link">Delete</button>

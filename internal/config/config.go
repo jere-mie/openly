@@ -12,7 +12,6 @@ type Config struct {
 	Port          string
 	Host          string
 	DatabasePath  string
-	BaseURL       string
 }
 
 // Load reads configuration from environment variables (and .env file).
@@ -24,11 +23,6 @@ func Load() *Config {
 		Port:          getEnv("PORT", "8080"),
 		Host:          getEnv("HOST", "localhost"),
 		DatabasePath:  getEnv("DATABASE_PATH", "openly.db"),
-		BaseURL:       getEnv("BASE_URL", ""),
-	}
-
-	if cfg.BaseURL == "" {
-		cfg.BaseURL = "http://" + cfg.Host + ":" + cfg.Port
 	}
 
 	return cfg

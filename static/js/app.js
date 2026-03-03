@@ -2,10 +2,6 @@
 (function () {
     "use strict";
 
-    var BASE_URL = "";
-    var baseUrlMeta = document.querySelector('meta[name="base-url"]');
-    if (baseUrlMeta) BASE_URL = baseUrlMeta.content;
-
     // ── Toast Notifications ─────────────────────────────
     function toast(message, type) {
         type = type || "info";
@@ -139,11 +135,11 @@
                     var shortLink = card.querySelector(".url-short");
                     if (shortLink) {
                         shortLink.textContent = "/" + newCode;
-                        shortLink.href = result.data.short_url;
+                        shortLink.href = "/" + newCode;
                     }
-                    var copyBtn = card.querySelector(".btn-copy[data-url]");
+                    var copyBtn = card.querySelector(".btn-copy");
                     if (copyBtn) {
-                        copyBtn.dataset.url = result.data.short_url;
+                        copyBtn.dataset.shortCode = newCode;
                     }
                     var editBtn = card.querySelector(".btn-edit");
                     if (editBtn) {
@@ -230,8 +226,9 @@
                 }
 
                 // Show result
-                resultUrl.href = result.data.short_url;
-                resultUrl.textContent = result.data.short_url;
+                var shortUrl = window.location.origin + "/" + result.data.short_code;
+                resultUrl.href = shortUrl;
+                resultUrl.textContent = shortUrl;
                 resultBox.classList.remove("hidden");
 
                 toast("Link created successfully!", "success");
@@ -273,7 +270,7 @@
             section.appendChild(list);
         }
 
-        var shortUrl = data.short_url || (window.location.origin + "/" + data.short_code);
+        var shortUrl = window.location.origin + "/" + data.short_code;
         var truncUrl = originalUrl.length > 80 ? originalUrl.substring(0, 80) + "\u2026" : originalUrl;
 
         var card = document.createElement("div");
@@ -291,7 +288,7 @@
                 '<span class="url-date">Just now</span>' +
             '</div>' +
             '<div class="url-actions">' +
-                '<button class="btn btn-small btn-copy" data-url="' + escapeHtml(shortUrl) + '" title="Copy short URL">Copy</button>' +
+                '<button class="btn btn-small btn-copy" data-short-code="' + escapeHtml(data.short_code) + '" title="Copy short URL">Copy</button>' +
                 '<button class="btn btn-small btn-outline btn-edit" data-id="' + data.id + '" data-code="' + escapeHtml(data.short_code) + '" title="Edit short code">Edit</button>' +
                 '<button class="btn btn-small btn-outline btn-stats" data-id="' + data.id + '" title="View click statistics">Stats</button>' +
                 '<button class="btn btn-small btn-danger btn-delete" data-id="' + data.id + '" title="Delete this link">Delete</button>' +
@@ -319,8 +316,8 @@
         var target = e.target;
 
         // Copy button
-        if (target.classList.contains("btn-copy") && target.dataset.url) {
-            copyToClipboard(target.dataset.url, target);
+        if (target.classList.contains("btn-copy") && target.dataset.shortCode) {
+            copyToClipboard(window.location.origin + "/" + target.dataset.shortCode, target);
             return;
         }
 
